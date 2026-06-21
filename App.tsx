@@ -1,186 +1,167 @@
-// import { StatusBar } from 'expo-status-bar';
-// import { StyleSheet, Text, View } from 'react-native';
 
-// export default function App() {
-//   return (
-//     <View style={styles.container}>
-//       <Text>Open up App.js to start working on your app!</Text>
-//       <StatusBar style="auto" />
-//     </View>
-//   );
-// }
 
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#fff',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-// });
+// import React, { useState, useEffect, useRef } from "react";
+// import { StyleSheet, View, FlatList, KeyboardAvoidingView, Platform, ImageBackground, Text } from "react-native";
+// import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+// import { collection, addDoc, doc, setDoc, query, orderBy, onSnapshot } from "firebase/firestore";
+// import { db } from "./firebase";
 
-// import React, { useState, useEffect, useRef } from 'react';
-// import {
-//   StyleSheet,
-//   Text,
-//   View,
-//   TextInput,
-//   TouchableOpacity,
-//   FlatList,
-//   KeyboardAvoidingView,
-//   Platform,
-//   SafeAreaView,
-//   ListRenderItem
-// } from 'react-native';
-// import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-// import { db } from './firebase';
+// import { ChatHeader } from "./components/ChatHeader";
+// import { MessageBubble } from "./components/MessageBubble";
+// import { MessageInput } from "./components/MessageInput";
 
 // interface Message {
 //   id: string;
 //   text: string;
-//   sender: 'UserA' | 'UserB';
+//   sender: "UserA" | "UserB";
 //   timestamp: number;
 //   timeString: string;
 // }
 
 // export default function App() {
 //   const [messages, setMessages] = useState<Message[]>([]);
-//   const [inputText, setInputText] = useState<string>('');
-//   const [currentUser, setCurrentUser] = useState<'UserA' | 'UserB'>('UserB');
+//   const [inputText, setInputText] = useState<string>("");
+//   const [currentUser, setCurrentUser] = useState<"UserA" | "UserB">("UserB");
+//   const [remoteUserTyping, setRemoteUserTyping] = useState<boolean>(false);
 //   const flatListRef = useRef<FlatList>(null);
 
-//   // Hook to establish the real-time cloud data stream
+//   // 1. Live Chat Stream Snapshot Listeners + Unsubscribe Cleanup
 //   useEffect(() => {
-//     const q = query(collection(db, "chats"), orderBy("timestamp", "asc"));
-
-//     const unsubscribe = onSnapshot(q, (snapshot) => {
-//       const fetchedMessages = snapshot.docs.map(doc => ({
-//         id: doc.id,
-//         ...doc.data()
+//     const chatQuery = query(collection(db, "chats"), orderBy("timestamp", "asc"));
+//     const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
+//       const fetched = snapshot.docs.map((docItem) => ({
+//         id: docItem.id,
+//         ...docItem.data(),
 //       })) as Message[];
-
-//       setMessages(fetchedMessages);
+//       setMessages(fetched);
 //     });
 
-//     // Clean up subscription listener on unmount
-//     return () => unsubscribe();
-//   }, []);
+//     // 2. Dynamic Live Tracking for Typing Indicators
+//     const targetUser = currentUser === "UserA" ? "UserB" : "UserA";
+//     const unsubscribeTyping = onSnapshot(doc(db, "presence", targetUser), (snapshot) => {
+//       if (snapshot.exists()) {
+//         setRemoteUserTyping(!!snapshot.data().typing);
+//       } else {
+//         setRemoteUserTyping(false);
+//       }
+//     });
 
-//   const sendMessage = async (): Promise<void> => {
+//     return () => {
+//       unsubscribeChats();
+//       unsubscribeTyping();
+//     };
+//   }, [currentUser]);
+
+//   // 3. Updates Personal Live Typing State on Value Alteration Changes
+//   const handleTextChange = async (text: string) => {
+//     setInputText(text);
+//     try {
+//       await setDoc(doc(db, "presence", currentUser), { typing: text.trim().length > 0 }, { merge: true });
+//     } catch (err) {
+//       console.error("Typing status state writing failure: ", err);
+//     }
+//   };
+
+//   const handleSendMessage = async () => {
 //     if (!inputText.trim()) return;
-
-//     const textToSend = inputText;
-//     setInputText(''); // Reset input immediately for snappy user experience feedback
+//     const textToSend = inputText.trim();
+//     setInputText("");
 
 //     try {
+//       // Clear personal typing flag on send
+//       await setDoc(doc(db, "presence", currentUser), { typing: false }, { merge: true });
+      
 //       await addDoc(collection(db, "chats"), {
 //         text: textToSend,
 //         sender: currentUser,
 //         timestamp: Date.now(),
-//         timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+//         timeString: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
 //       });
 //     } catch (error) {
-//       console.error("Error writing message to cloud database: ", error);
+//       console.error("Database messaging write transaction failure: ", error);
 //     }
 //   };
 
-//   const renderItem: ListRenderItem<Message> = ({ item }) => {
-//     const isMe = item.sender === currentUser;
-//     return (
-//       <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
-//         <Text style={styles.messageText}>{item.text}</Text>
-//         <Text style={styles.timestamp}>{item.timeString}</Text>
-//       </View>
-//     );
-//   };
-
 //   return (
-//     <SafeAreaView style={styles.container}>
-//       {/* APP TOPBAR */}
-//       <View style={styles.header}>
-//         <Text style={styles.headerTitle}>DevRiser Live Chat</Text>
-//         <TouchableOpacity
-//           style={styles.switchButton}
-//           onPress={() => setCurrentUser(currentUser === 'UserB' ? 'UserA' : 'UserB')}
-//         >
-//           <Text style={styles.switchText}>Role: {currentUser}</Text>
-//         </TouchableOpacity>
-//       </View>
+//     <SafeAreaProvider>
+//       <SafeAreaView style={styles.container}>
+//         <ChatHeader 
+//           currentUser={currentUser} 
+//           onSwitchUser={() => setCurrentUser(currentUser === "UserA" ? "UserB" : "UserA")} 
+//         />
 
-//       {/* STREAM LAYOUT LIST */}
-//       <FlatList
-//         ref={flatListRef}
-//         data={messages}
-//         keyExtractor={(item) => item.id}
-//         renderItem={renderItem}
-//         contentContainerStyle={styles.listContent}
-//         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-//       />
-
-//       {/* INTERACTIVE CONTROLLER INPUT */}
-//       <KeyboardAvoidingView
-//         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-//         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 60}
-//       >
-
-//         <View style={styles.inputContainer}>
-//           <TextInput
-//             style={styles.input}
-//             value={inputText}
-//             onChangeText={setInputText}
-//             placeholder="Type a message..."
-//             placeholderTextColor="#888"
+//         <View style={styles.centerStageContainer}>
+//           <ImageBackground
+//             source={require("./assets/wallpaper.png")}
+//             style={StyleSheet.absoluteFillObject}
+//             resizeMode="repeat"
+//             imageStyle={{ opacity: 0.18 }}
 //           />
-//           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-//             <Text style={styles.sendButtonText}>Send</Text>
-//           </TouchableOpacity>
+          
+//           <FlatList
+//             ref={flatListRef}
+//             data={messages}
+//             keyExtractor={(item) => item.id}
+//             contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 16, paddingBottom: 32 }}
+//             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+//             renderItem={({ item, index }) => {
+//               const isMe = item.sender === currentUser;
+//               const prev = messages[index - 1];
+//               const next = messages[index + 1];
+//               return (
+//                 <MessageBubble
+//                   item={item}
+//                   isMe={isMe}
+//                   isFirstInGroup={!prev || prev.sender !== item.sender}
+//                   isLastInGroup={!next || next.sender !== item.sender}
+//                 />
+//               );
+//             }}
+//           />
+
+//           {remoteUserTyping && (
+//             <View style={styles.typingContainer}>
+//               <Text style={styles.typingText}>
+//                 {currentUser === "UserA" ? "User B" : "User A"} is typing...
+//               </Text>
+//             </View>
+//           )}
 //         </View>
-//       </KeyboardAvoidingView>
-//     </SafeAreaView>
+
+//         <KeyboardAvoidingView
+//           behavior={Platform.OS === "ios" ? "padding" : "height"}
+//           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 60}
+//         >
+//           <MessageInput 
+//             inputText={inputText} 
+//             onChangeText={handleTextChange} 
+//             onSend={handleSendMessage} 
+//             currentUser={currentUser} 
+//           />
+//         </KeyboardAvoidingView>
+//       </SafeAreaView>
+//     </SafeAreaProvider>
 //   );
 // }
 
 // const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#121212' },
-//   header: { padding: 16, backgroundColor: '#1f1f1f', borderBottomWidth: 1, borderBottomColor: '#2d2d2d', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-//   headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-//   switchButton: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-//   switchText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-//   listContent: { padding: 16 },
-//   messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 16, marginVertical: 6 },
-//   myBubble: { backgroundColor: '#007AFF', alignSelf: 'flex-end', borderBottomRightRadius: 2 },
-//   theirBubble: { backgroundColor: '#2c2c2e', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
-//   messageText: { fontSize: 16, color: '#fff' },
-//   timestamp: { fontSize: 10, color: '#aaa', alignSelf: 'flex-end', marginTop: 4 },
-//   inputContainer: { flexDirection: 'row', padding: 12, backgroundColor: '#1f1f1f', alignItems: 'center' },
-//   input: { flex: 1, backgroundColor: '#2c2c2e', color: '#fff', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginRight: 12, fontSize: 16 },
-//   sendButton: { backgroundColor: '#007AFF', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-//   sendButtonText: { color: '#fff', fontWeight: 'bold' }
+//   container: { flex: 1, backgroundColor: "#0e1621" },
+//   centerStageContainer: { flex: 1, position: "relative", backgroundColor: "#0e1621" },
+//   typingContainer: { position: "absolute", bottom: 6, left: 14 },
+//   typingText: { color: "#5288c1", fontSize: 12, fontStyle: "italic" }
 // });
 
+
 import React, { useState, useEffect, useRef } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  ListRenderItem,
-  ImageBackground, // 🌟 Add this import
-} from "react-native";
-// 1. Import the provider and the new Android-friendly SafeAreaView component
+import { StyleSheet, View, FlatList, KeyboardAvoidingView, Platform, ImageBackground, Text } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-} from "firebase/firestore";
-import { db } from "./firebase";
+import { collection, addDoc, doc, setDoc, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "./firebase"; // Verified configurations reading your active persistent caches
+
+import { SplashScreen } from "./components/SplashScreen";
+import { ChatHeader } from "./components/ChatHeader";
+import { MessageBubble } from "./components/MessageBubble";
+import { MessageInput } from "./components/MessageInput";
 
 interface Message {
   id: string;
@@ -191,261 +172,142 @@ interface Message {
 }
 
 export default function App() {
+  const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState<string>("");
   const [currentUser, setCurrentUser] = useState<"UserA" | "UserB">("UserB");
+  const [remoteUserTyping, setRemoteUserTyping] = useState<boolean>(false);
   const flatListRef = useRef<FlatList>(null);
 
+  // Live Cloud Database Listeners initialization pipeline
   useEffect(() => {
-    const q = query(collection(db, "chats"), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Message[];
-      setMessages(fetchedMessages);
-    });
-    return () => unsubscribe();
-  }, []);
+    if (isAppLoading) return; // Wait until splash screen countdown finishes
 
-  const sendMessage = async (): Promise<void> => {
+    // Continuous dynamic network subscription synchronization
+    const chatQuery = query(collection(db, "chats"), orderBy("timestamp", "asc"));
+    const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
+      const fetched = snapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+      })) as Message[];
+      setMessages(fetched);
+    });
+
+    // Remote presence mapping listener
+    const targetUser = currentUser === "UserA" ? "UserB" : "UserA";
+    const unsubscribeTyping = onSnapshot(doc(db, "presence", targetUser), (snapshot) => {
+      if (snapshot.exists()) {
+        setRemoteUserTyping(!!snapshot.data().typing);
+      } else {
+        setRemoteUserTyping(false);
+      }
+    });
+
+    // Lifecycle garbage tracking handler protection cleanups
+    return () => {
+      unsubscribeChats();
+      unsubscribeTyping();
+    };
+  }, [isAppLoading, currentUser]);
+
+  const handleTextChange = async (text: string) => {
+    setInputText(text);
+    if (isAppLoading) return;
+    try {
+      await setDoc(doc(db, "presence", currentUser), { typing: text.trim().length > 0 }, { merge: true });
+    } catch (err) {
+      console.error("Presence fault: ", err);
+    }
+  };
+
+  const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    const textToSend = inputText;
+    const textToSend = inputText.trim();
     setInputText("");
 
     try {
+      await setDoc(doc(db, "presence", currentUser), { typing: false }, { merge: true });
       await addDoc(collection(db, "chats"), {
         text: textToSend,
         sender: currentUser,
         timestamp: Date.now(),
-        timeString: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        timeString: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       });
     } catch (error) {
-      console.error("Error writing message to cloud database: ", error);
+      console.error("Cloud database write failure: ", error);
     }
   };
 
-  const renderItem: ListRenderItem<Message> = ({ item }) => {
-    const isMe = item.sender === currentUser;
-    return (
-      <View
-        style={[
-          styles.messageBubble,
-          isMe ? styles.myBubble : styles.theirBubble,
-        ]}
-      >
-        <Text style={styles.messageText}>{item.text}</Text>
-        <Text style={styles.timestamp}>{item.timeString}</Text>
-      </View>
-    );
-  };
+  // Intercept view layer layout structure if loading clock is counting down
+  if (isAppLoading) {
+    return <SplashScreen onFinish={() => setIsAppLoading(false)} />;
+  }
 
   return (
-    // 2. Wrap your entire application structure inside the provider shell
     <SafeAreaProvider>
-      {/* 3. This version of SafeAreaView applies custom inset padding to Android dynamically */}
       <SafeAreaView style={styles.container}>
-        {/* HEADER BAR */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>DevRiser Live Chat</Text>
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={() =>
-              setCurrentUser(currentUser === "UserB" ? "UserA" : "UserB")
-            }
-          >
-            <Text style={styles.switchText}>Role: {currentUser}</Text>
-          </TouchableOpacity>
-        </View>
-        {/* 🌟 WHATSAPP GRAFFITI BACKGROUND WALLPAPER */}
-        <ImageBackground
-          source={{
-            uri: "https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png",
-          }}
-          style={styles.wallpaper}
-          resizeMode="repeat" // This tiles the graffiti doodle infinitely
-        >
-          {/* STREAM LAYOUT LIST */}
+        <ChatHeader 
+          currentUser={currentUser} 
+          onSwitchUser={() => setCurrentUser(currentUser === "UserA" ? "UserB" : "UserA")} 
+        />
+
+        <View style={styles.centerStageContainer}>
+          <ImageBackground
+            source={require("./assets/wallpaper.png")}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="repeat"
+            imageStyle={{ opacity: 0.18 }}
+          />
+          
           <FlatList
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({ animated: true })
-            }
+            contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 16, paddingBottom: 32 }}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            renderItem={({ item, index }) => {
+              const isMe = item.sender === currentUser;
+              const prev = messages[index - 1];
+              const next = messages[index + 1];
+              return (
+                <MessageBubble
+                  item={item}
+                  isMe={isMe}
+                  isFirstInGroup={!prev || prev.sender !== item.sender}
+                  isLastInGroup={!next || next.sender !== item.sender}
+                />
+              );
+            }}
           />
-        </ImageBackground>
 
-        {/* INTERACTIVE INPUT CONTROLLER */}
+          {remoteUserTyping && (
+            <View style={styles.typingContainer}>
+              <Text style={styles.typingText}>
+                {currentUser === "UserA" ? "User B" : "User A"} is typing...
+              </Text>
+            </View>
+          )}
+        </View>
+
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 60}
         >
-          {/* <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Type a message..."
-              placeholderTextColor="#888"
-            />
-            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-              <Text style={styles.sendButtonText}>Send</Text>
-            </TouchableOpacity>
-          </View> */}
-          {/* Find this section inside your KeyboardAvoidingView and swap it */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Message" // Telegram style placeholder
-              placeholderTextColor="#6c7883"
-            />
-            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-              {/* Clean text arrow instead of bulky button shape */}
-              <Text style={styles.sendButtonText}>➔</Text>
-            </TouchableOpacity>
-          </View>
+          <MessageInput 
+            inputText={inputText} 
+            onChangeText={handleTextChange} 
+            onSend={handleSendMessage} 
+            currentUser={currentUser} 
+          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#121212' },
-//   header: { padding: 16, backgroundColor: '#1f1f1f', borderBottomWidth: 1, borderBottomColor: '#2d2d2d', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-//   headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-//   switchButton: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-//   switchText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-//   listContent: { padding: 16 },
-//   messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 16, marginVertical: 6 },
-//   myBubble: { backgroundColor: '#007AFF', alignSelf: 'flex-end', borderBottomRightRadius: 2 },
-//   theirBubble: { backgroundColor: '#2c2c2e', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
-//   messageText: { fontSize: 16, color: '#fff' },
-//   timestamp: { fontSize: 10, color: '#aaa', alignSelf: 'flex-end', marginTop: 4 },
-//   inputContainer: { flexDirection: 'row', padding: 12, backgroundColor: '#1f1f1f', alignItems: 'center' },
-//   input: { flex: 1, backgroundColor: '#2c2c2e', color: '#fff', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginRight: 12, fontSize: 16 },
-//   sendButton: { backgroundColor: '#007AFF', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-//   sendButtonText: { color: '#fff', fontWeight: 'bold' }
-// });
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#3b3c3d", // 🌟 Telegram Signature Dark Theme Base
-  },
-  wallpaper: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  header: {
-    padding: 16,
-    backgroundColor: "#596979", // 🌟 Slightly lighter contrast header
-    borderBottomWidth: 1,
-    borderBottomColor: "#101921",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  switchButton: {
-    backgroundColor: "#2481cc", // 🌟 Sleek Telegram Blue Accent
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-  },
-  switchText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 24,
-  },
-  messageBubble: {
-    maxWidth: "78%",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 22,
-
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  myBubble: {
-    backgroundColor: "#2481cc",
-    alignSelf: "flex-end",
-
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-  },
-  theirBubble: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignSelf: "flex-start",
-
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-  },
-  messageText: {
-    fontSize: 15,
-    color: "#fff",
-    lineHeight: 20,
-  },
-  timestamp: {
-    fontSize: 10,
-    color: "#7f91a4", // Desaturated gray-blue timestamp text
-    alignSelf: "flex-end",
-    marginTop: 3,
-    marginLeft: 12,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#17212b", // Matched header bar background
-    borderTopWidth: 1,
-    borderTopColor: "#101921",
-    alignItems: "center",
-  },
-  input: {
-    flex: 1,
-    backgroundColor: "#0e1621", // Dark contrast background inset
-    color: "#fff",
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
-    fontSize: 15,
-  },
-  sendButton: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#2481cc", // Circular action button launcher
-  },
-  sendButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
+  container: { flex: 1, backgroundColor: "#0e1621" },
+  centerStageContainer: { flex: 1, position: "relative", backgroundColor: "#0e1621" },
+  typingContainer: { position: "absolute", bottom: 6, left: 14 },
+  typingText: { color: "#5288c1", fontSize: 12, fontStyle: "italic" }
 });
