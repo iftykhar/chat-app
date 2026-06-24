@@ -49,4 +49,21 @@ export const styles = StyleSheet.create({
     timeText: { fontSize: 11 },
     timeMe: { color: `${Colors.onPrimary}88` },
     timeThem: { color: Colors.onSurfaceVariant },
+    statusSending: {
+        fontSize: 11,
+        color: `${Colors.onPrimary}66`,
+        marginLeft: 3,
+    },
+    statusDelivered: {
+        fontSize: 11,
+        color: `${Colors.onPrimary}AA`,
+        marginLeft: 3,
+        letterSpacing: -1,
+    },
+    statusRead: {
+        fontSize: 11,
+        color: Colors.primaryContainer,
+        marginLeft: 3,
+        letterSpacing: -1,
+    },
 });

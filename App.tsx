@@ -431,7 +431,8 @@ import { db } from "./firebase";
 import { SplashScreen } from "./components/SplashScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { MessageBubble } from "./components/MessageBubble";
-import { styles } from "./styles/ChatScreen.styles"; 
+import { styles } from "./styles/ChatScreen.styles";
+import { Colors } from "./constants/Colors";
 
 interface Message {
   id: string;
@@ -439,6 +440,7 @@ interface Message {
   sender: string;
   timestamp: number;
   timeString: string;
+  status?: "sending" | "delivered" | "read";
 }
 
 export default function App() {
@@ -450,6 +452,8 @@ export default function App() {
   
   const flatListRef = useRef<FlatList>(null);
   const isInitialMount = useRef<boolean>(true);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasTypingRef = useRef<boolean>(false);
 
   const audioSource: AudioSource = { uri: "https://assets.mixkit.co/active_storage/sfx/2357/2357-84.wav" };
   const player = useAudioPlayer(audioSource);
@@ -463,10 +467,17 @@ export default function App() {
 
     const chatQuery = query(collection(db, "chats"), orderBy("timestamp", "asc"));
     const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
-      const fetched = snapshot.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })) as Message[];
+      const fetched = snapshot.docs.map((docItem) => {
+        const data = docItem.data();
+        return {
+          id: docItem.id,
+          text: data.text,
+          sender: data.sender,
+          timestamp: data.timestamp,
+          timeString: data.timeString,
+          status: data.status || "delivered",
+        } as Message;
+      });
 
       if (!isInitialMount.current && fetched.length > messages.length) {
         const lastMessage = fetched[fetched.length - 1];
@@ -495,6 +506,15 @@ export default function App() {
     };
   }, [currentUserEmail, messages.length]);
 
+  // Cleanup typing debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const playIncomingPingSound = () => {
     try {
       if (player) {
@@ -506,16 +526,50 @@ export default function App() {
     }
   };
 
-  const handleTextChange = async (text: string) => {
-    setInputText(text);
+  const emitTypingStatus = async (isTyping: boolean) => {
     if (!currentUserEmail) return;
     try {
       await setDoc(doc(db, "presence", currentUserEmail), { 
-        typing: text.trim().length > 0,
+        typing: isTyping,
         lastActive: Date.now()
       }, { merge: true });
     } catch (err) {
-      console.error("Presence logging failure:", err);
+      console.error("Presence update failure:", err);
+    }
+  };
+
+  const handleTextChange = (text: string) => {
+    setInputText(text);
+
+    if (!currentUserEmail) return;
+
+    const isCurrentlyEmpty = text.trim().length === 0;
+
+    // Clear any pending debounce timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    if (isCurrentlyEmpty) {
+      if (wasTypingRef.current) {
+        // Text became empty → immediately clear typing status
+        emitTypingStatus(false);
+        wasTypingRef.current = false;
+      }
+    } else if (!wasTypingRef.current) {
+      // Text went from empty to non-empty → immediately emit typing: true
+      emitTypingStatus(true);
+      wasTypingRef.current = true;
+    }
+
+    // Always set debounce when there's text (either starting or continuing)
+    if (!isCurrentlyEmpty) {
+      typingTimeoutRef.current = setTimeout(() => {
+        emitTypingStatus(false);
+        wasTypingRef.current = false;
+        typingTimeoutRef.current = null;
+      }, 2000);
     }
   };
 
@@ -525,6 +579,12 @@ export default function App() {
     setInputText("");
 
     try {
+      // Clear any pending typing debounce before sending
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      wasTypingRef.current = false;
       await setDoc(doc(db, "presence", currentUserEmail), { typing: false }, { merge: true });
       
       await addDoc(collection(db, "chats"), {
@@ -532,6 +592,7 @@ export default function App() {
         sender: currentUserEmail,
         timestamp: Date.now(),
         timeString: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        status: "delivered",
       });
     } catch (error) {
       console.error("Firestore transmission anomaly:", error);
@@ -540,6 +601,11 @@ export default function App() {
 
   const handleSwitchUser = async () => {
     if (!currentUserEmail) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    wasTypingRef.current = false;
     await setDoc(doc(db, "presence", currentUserEmail), { typing: false }, { merge: true });
     
     if (currentUserEmail === "usera@devriser.com") {
@@ -552,6 +618,11 @@ export default function App() {
 
   const handleLogOut = async () => {
     if (currentUserEmail) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      wasTypingRef.current = false;
       await setDoc(doc(db, "presence", currentUserEmail), { typing: false }, { merge: true });
     }
     setCurrentUserEmail(null);
@@ -568,49 +639,47 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.safe, { backgroundColor: "#ffffff" }]}>
+      <SafeAreaView style={styles.safe}>
         
-        {/* HEADER ANCHOR CHANNELS */}
-        <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)", backgroundColor: "#ffffff" }]}>
+        {/* HEADER using stylesheet tokens */}
+        <View style={styles.header}>
           <View style={styles.headerInfo}>
-            <Text style={[styles.headerName, { fontWeight: "600" }]} numberOfLines={1}>
+            <Text style={styles.headerName} numberOfLines={1}>
               {currentUserEmail.split('@')[0].toUpperCase()}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#4CAF50" }} />
-              <Text style={[styles.headerSub, { fontSize: 12, color: "#757575" }]}>Active Sync Channel</Text>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.online }} />
+              <Text style={[styles.headerSub, { fontSize: 12 }]}>Active Sync Channel</Text>
             </View>
           </View>
           
           <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
             <TouchableOpacity 
-              style={{ backgroundColor: "rgba(36,129,204,0.08)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }} 
+              style={{ backgroundColor: `${Colors.primary}14`, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }} 
               onPress={handleSwitchUser}
             >
-              <Text style={{ color: "#2481cc", fontSize: 13, fontWeight: "600" }}>🔄 Identity Swap</Text>
+              <Text style={{ color: Colors.primary, fontSize: 13, fontWeight: "600" }}>🔄 Identity Swap</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={{ backgroundColor: "rgba(255,68,68,0.06)", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20 }} 
+              style={{ backgroundColor: `${Colors.error}14`, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20 }} 
               onPress={handleLogOut}
             >
-              <Text style={{ color: "#ff4444", fontSize: 13, fontWeight: "600" }}>Leave</Text>
+              <Text style={{ color: Colors.error, fontSize: 13, fontWeight: "600" }}>Leave</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* MODERN KEYBOARD RIG:
-          Wrapping the workspace cleanly using cross-platform layout tokens.
-          On iOS, we use padding adjustments with a precise offset to handle safe-area spacing cleanly.
-          On Android, the operating system manages resizing internally, so we don't apply extra behavior.
-        */}
+        {/* KeyboardAvoidingView — cross-platform safe layout
+            iOS: padding behavior with offset for header + safe area
+            Android: height behavior (wraps content above keyboard) */}
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.kav}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
         >
-          {/* MAIN BOX CONTAINER */}
-          <View style={{ flex: 1, backgroundColor: "#f4f5f7", position: "relative" }}>
+          {/* Messages container */}
+          <View style={{ flex: 1, backgroundColor: Colors.surface, position: "relative" }}>
             <ImageBackground
               source={require("./assets/wallpaper.png")}
               style={StyleSheet.absoluteFillObject}
@@ -622,7 +691,7 @@ export default function App() {
               ref={flatListRef}
               data={messages}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}
+              contentContainerStyle={styles.messageList}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
               keyboardDismissMode="on-drag"
@@ -633,37 +702,38 @@ export default function App() {
             />
 
             {remoteUserTyping && (
-              <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
-                <Text style={{ fontSize: 12, color: "#2481cc", fontWeight: "500", fontStyle: "italic" }}>
+              <View style={styles.typingRow}>
+                <Text style={styles.typingText}>
                   💬 Opponent node is typing...
                 </Text>
               </View>
             )}
           </View>
 
-          {/* DYNAMIC ATTACHED FOOTER INPUT BAR */}
-          <View style={{ borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)", backgroundColor: "#ffffff", paddingHorizontal: 12, paddingVertical: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f0f2f5", borderRadius: 24, paddingHorizontal: 14, minHeight: 44 }}>
+          {/* Input bar using stylesheet tokens */}
+          <View style={[styles.inputBar, { backgroundColor: Colors.surfaceLowest }]}>
+            <View style={styles.inputRow}>
               <TextInput
-                style={{ flex: 1, fontSize: 15, color: "#2c3e50", paddingVertical: 8, marginRight: 10 }}
+                style={styles.textInput}
                 value={inputText}
                 onChangeText={handleTextChange}
                 placeholder="Type your secure message..."
-                placeholderTextColor="#95a5a6"
+                placeholderTextColor={Colors.onSurfaceVariant}
                 multiline
               />
               <TouchableOpacity 
-                style={{ 
-                  backgroundColor: inputText.trim().length > 0 ? "#2481cc" : "transparent", 
-                  width: 32, 
-                  height: 32, 
-                  borderRadius: 16, 
-                  justifyContent: "center", 
-                  alignItems: "center" 
-                }} 
+                style={[
+                  styles.sendBtn,
+                  { backgroundColor: inputText.trim().length > 0 ? Colors.primary : Colors.surfaceHigh },
+                  inputText.trim().length === 0 && styles.sendBtnDisabled,
+                ]} 
                 onPress={handleSendMessage}
               >
-                <Text style={{ color: inputText.trim().length > 0 ? "#ffffff" : "#2481cc", fontWeight: "700", fontSize: 14 }}>
+                <Text style={{ 
+                  color: inputText.trim().length > 0 ? Colors.onPrimary : Colors.onSurfaceVariant, 
+                  fontWeight: "700", 
+                  fontSize: 14 
+                }}>
                   ➔
                 </Text>
               </TouchableOpacity>

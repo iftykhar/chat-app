@@ -44,11 +44,38 @@ interface MessageBubbleProps {
     text: string;
     sender: string;
     timeString: string;
+    status?: string;
   };
   isMe: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ item, isMe }) => {
+  const renderStatusTicks = () => {
+    if (!isMe) return null;
+
+    switch (item.status) {
+      case "sending":
+        return (
+          <Text style={styles.statusSending}>
+            ✓
+          </Text>
+        );
+      case "read":
+        return (
+          <Text style={styles.statusRead}>
+            ✓✓
+          </Text>
+        );
+      case "delivered":
+      default:
+        return (
+          <Text style={styles.statusDelivered}>
+            ✓✓
+          </Text>
+        );
+    }
+  };
+
   return (
     <View style={[styles.row, isMe ? styles.rowMe : styles.rowThem, { marginVertical: 4 }]}>
       <View 
@@ -79,10 +106,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ item, isMe }) => {
           {item.text}
         </Text>
         
-        <View style={{ alignSelf: "flex-end", marginTop: 4 }}>
-          <Text style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.75)" : "#95a5a6" }}>
+        <View style={[styles.footer, isMe ? styles.footerRight : styles.footerLeft]}>
+          <Text style={[styles.timeText, isMe ? styles.timeMe : styles.timeThem]}>
             {item.timeString || "Just now"}
           </Text>
+          {renderStatusTicks()}
         </View>
       </View>
     </View>
