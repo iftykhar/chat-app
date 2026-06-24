@@ -1,32 +1,87 @@
+// import React from "react";
+// import { View, Text } from "react-native";
+// import { styles } from "../styles/Bubble.styles"; // Linked Styles sheet
+
+// interface Message {
+//   id: string;
+//   text: string;
+//   sender: string;
+//   timeString: string;
+// }
+
+// interface MessageBubbleProps {
+//   item: Message;
+//   isMe: boolean;
+// }
+
+// export const MessageBubble: React.FC<MessageBubbleProps> = ({ item, isMe }) => {
+//   return (
+//     <View style={[styles.row, isMe ? styles.rowMe : styles.rowThem]}>
+//       <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
+//         {!isMe && <Text style={styles.senderName}>{item.sender.split("@")[0]}</Text>}
+        
+//         <Text style={[styles.msgText, isMe ? styles.msgTextMe : styles.msgTextThem]}>
+//           {item.text}
+//         </Text>
+        
+//         <View style={styles.footer}>
+//           <Text style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.7)" : "#888", paddingHorizontal: 12, paddingBottom: 6, textAlign: "right" }}>
+//             {item.timeString} {isMe ? "✓✓" : ""}
+//           </Text>
+//         </View>
+//       </View>
+//     </View>
+//   );
+// };
+
+
 import React from "react";
 import { View, Text } from "react-native";
-import { styles } from "../styles/Bubble.styles"; // Linked Styles sheet
-
-interface Message {
-  id: string;
-  text: string;
-  sender: string;
-  timeString: string;
-}
+import { styles } from "../styles/Bubble.styles";
 
 interface MessageBubbleProps {
-  item: Message;
+  item: {
+    text: string;
+    sender: string;
+    timeString: string;
+  };
   isMe: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ item, isMe }) => {
   return (
-    <View style={[styles.row, isMe ? styles.rowMe : styles.rowThem]}>
-      <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-        {!isMe && <Text style={styles.senderName}>{item.sender.split("@")[0]}</Text>}
+    <View style={[styles.row, isMe ? styles.rowMe : styles.rowThem, { marginVertical: 4 }]}>
+      <View 
+        style={[
+          styles.bubble, 
+          isMe ? styles.bubbleMe : styles.bubbleThem,
+          {
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: 16,
+            maxWidth: "75%",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 1,
+            elevation: 1,
+            backgroundColor: isMe ? "#2481cc" : "#ffffff", 
+          }
+        ]}
+      >
+        {!isMe && (
+          <Text style={[styles.senderName, { color: "#2481cc", marginBottom: 2, fontWeight: "600", fontSize: 11 }]}>
+            {item.sender.split('@')[0]}
+          </Text>
+        )}
         
-        <Text style={[styles.msgText, isMe ? styles.msgTextMe : styles.msgTextThem]}>
+        <Text style={[styles.msgText, { color: isMe ? "#ffffff" : "#2c3e50", fontSize: 15, lineHeight: 20 }]}>
           {item.text}
         </Text>
         
-        <View style={styles.footer}>
-          <Text style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.7)" : "#888", paddingHorizontal: 12, paddingBottom: 6, textAlign: "right" }}>
-            {item.timeString} {isMe ? "✓✓" : ""}
+        <View style={{ alignSelf: "flex-end", marginTop: 4 }}>
+          <Text style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.75)" : "#95a5a6" }}>
+            {item.timeString || "Just now"}
           </Text>
         </View>
       </View>

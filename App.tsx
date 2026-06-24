@@ -124,165 +124,165 @@
 
 
 
-import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, FlatList, KeyboardAvoidingView, Platform, ImageBackground, Text } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { collection, addDoc, doc, setDoc, query, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase"; // Verified configurations reading your active persistent caches
+// import React, { useState, useEffect, useRef } from "react";
+// import { StyleSheet, View, FlatList, KeyboardAvoidingView, Platform, ImageBackground, Text } from "react-native";
+// import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+// import { collection, addDoc, doc, setDoc, query, orderBy, onSnapshot } from "firebase/firestore";
+// import { db } from "./firebase"; // Verified configurations reading your active persistent caches
 
-import { SplashScreen } from "./components/SplashScreen";
-import { ChatHeader } from "./components/ChatHeader";
-import { MessageBubble } from "./components/MessageBubble";
-import { MessageInput } from "./components/MessageInput";
+// import { SplashScreen } from "./components/SplashScreen";
+// import { ChatHeader } from "./components/ChatHeader";
+// import { MessageBubble } from "./components/MessageBubble";
+// import { MessageInput } from "./components/MessageInput";
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "UserA" | "UserB";
-  timestamp: number;
-  timeString: string;
-}
+// interface Message {
+//   id: string;
+//   text: string;
+//   sender: "UserA" | "UserB";
+//   timestamp: number;
+//   timeString: string;
+// }
 
-export default function App() {
-  const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<"UserA" | "UserB">("UserB");
-  const [remoteUserTyping, setRemoteUserTyping] = useState<boolean>(false);
-  const flatListRef = useRef<FlatList>(null);
+// export default function App() {
+//   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
+//   const [messages, setMessages] = useState<Message[]>([]);
+//   const [inputText, setInputText] = useState<string>("");
+//   const [currentUser, setCurrentUser] = useState<"UserA" | "UserB">("UserB");
+//   const [remoteUserTyping, setRemoteUserTyping] = useState<boolean>(false);
+//   const flatListRef = useRef<FlatList>(null);
 
-  // Live Cloud Database Listeners initialization pipeline
-  useEffect(() => {
-    if (isAppLoading) return; // Wait until splash screen countdown finishes
+//   // Live Cloud Database Listeners initialization pipeline
+//   useEffect(() => {
+//     if (isAppLoading) return; // Wait until splash screen countdown finishes
 
-    // Continuous dynamic network subscription synchronization
-    const chatQuery = query(collection(db, "chats"), orderBy("timestamp", "asc"));
-    const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
-      const fetched = snapshot.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      })) as Message[];
-      setMessages(fetched);
-    });
+//     // Continuous dynamic network subscription synchronization
+//     const chatQuery = query(collection(db, "chats"), orderBy("timestamp", "asc"));
+//     const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
+//       const fetched = snapshot.docs.map((docItem) => ({
+//         id: docItem.id,
+//         ...docItem.data(),
+//       })) as Message[];
+//       setMessages(fetched);
+//     });
 
-    // Remote presence mapping listener
-    const targetUser = currentUser === "UserA" ? "UserB" : "UserA";
-    const unsubscribeTyping = onSnapshot(doc(db, "presence", targetUser), (snapshot) => {
-      if (snapshot.exists()) {
-        setRemoteUserTyping(!!snapshot.data().typing);
-      } else {
-        setRemoteUserTyping(false);
-      }
-    });
+//     // Remote presence mapping listener
+//     const targetUser = currentUser === "UserA" ? "UserB" : "UserA";
+//     const unsubscribeTyping = onSnapshot(doc(db, "presence", targetUser), (snapshot) => {
+//       if (snapshot.exists()) {
+//         setRemoteUserTyping(!!snapshot.data().typing);
+//       } else {
+//         setRemoteUserTyping(false);
+//       }
+//     });
 
-    // Lifecycle garbage tracking handler protection cleanups
-    return () => {
-      unsubscribeChats();
-      unsubscribeTyping();
-    };
-  }, [isAppLoading, currentUser]);
+//     // Lifecycle garbage tracking handler protection cleanups
+//     return () => {
+//       unsubscribeChats();
+//       unsubscribeTyping();
+//     };
+//   }, [isAppLoading, currentUser]);
 
-  const handleTextChange = async (text: string) => {
-    setInputText(text);
-    if (isAppLoading) return;
-    try {
-      await setDoc(doc(db, "presence", currentUser), { typing: text.trim().length > 0 }, { merge: true });
-    } catch (err) {
-      console.error("Presence fault: ", err);
-    }
-  };
+//   const handleTextChange = async (text: string) => {
+//     setInputText(text);
+//     if (isAppLoading) return;
+//     try {
+//       await setDoc(doc(db, "presence", currentUser), { typing: text.trim().length > 0 }, { merge: true });
+//     } catch (err) {
+//       console.error("Presence fault: ", err);
+//     }
+//   };
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
-    const textToSend = inputText.trim();
-    setInputText("");
+//   const handleSendMessage = async () => {
+//     if (!inputText.trim()) return;
+//     const textToSend = inputText.trim();
+//     setInputText("");
 
-    try {
-      await setDoc(doc(db, "presence", currentUser), { typing: false }, { merge: true });
-      await addDoc(collection(db, "chats"), {
-        text: textToSend,
-        sender: currentUser,
-        timestamp: Date.now(),
-        timeString: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      });
-    } catch (error) {
-      console.error("Cloud database write failure: ", error);
-    }
-  };
+//     try {
+//       await setDoc(doc(db, "presence", currentUser), { typing: false }, { merge: true });
+//       await addDoc(collection(db, "chats"), {
+//         text: textToSend,
+//         sender: currentUser,
+//         timestamp: Date.now(),
+//         timeString: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+//       });
+//     } catch (error) {
+//       console.error("Cloud database write failure: ", error);
+//     }
+//   };
 
-  // Intercept view layer layout structure if loading clock is counting down
-  if (isAppLoading) {
-    return <SplashScreen onFinish={() => setIsAppLoading(false)} />;
-  }
+//   // Intercept view layer layout structure if loading clock is counting down
+//   if (isAppLoading) {
+//     return <SplashScreen onFinish={() => setIsAppLoading(false)} />;
+//   }
 
-  return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <ChatHeader 
-          currentUser={currentUser} 
-          onSwitchUser={() => setCurrentUser(currentUser === "UserA" ? "UserB" : "UserA")} 
-        />
+//   return (
+//     <SafeAreaProvider>
+//       <SafeAreaView style={styles.container}>
+//         <ChatHeader 
+//           currentUser={currentUser} 
+//           onSwitchUser={() => setCurrentUser(currentUser === "UserA" ? "UserB" : "UserA")} 
+//         />
 
-        <View style={styles.centerStageContainer}>
-          <ImageBackground
-            source={require("./assets/wallpaper.png")}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode="repeat"
-            imageStyle={{ opacity: 0.18 }}
-          />
+//         <View style={styles.centerStageContainer}>
+//           <ImageBackground
+//             source={require("./assets/wallpaper.png")}
+//             style={StyleSheet.absoluteFillObject}
+//             resizeMode="repeat"
+//             imageStyle={{ opacity: 0.18 }}
+//           />
           
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 16, paddingBottom: 32 }}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            renderItem={({ item, index }) => {
-              const isMe = item.sender === currentUser;
-              const prev = messages[index - 1];
-              const next = messages[index + 1];
-              return (
-                <MessageBubble
-                  item={item}
-                  isMe={isMe}
-                  isFirstInGroup={!prev || prev.sender !== item.sender}
-                  isLastInGroup={!next || next.sender !== item.sender}
-                />
-              );
-            }}
-          />
+//           <FlatList
+//             ref={flatListRef}
+//             data={messages}
+//             keyExtractor={(item) => item.id}
+//             contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 16, paddingBottom: 32 }}
+//             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+//             renderItem={({ item, index }) => {
+//               const isMe = item.sender === currentUser;
+//               const prev = messages[index - 1];
+//               const next = messages[index + 1];
+//               return (
+//                 <MessageBubble
+//                   item={item}
+//                   isMe={isMe}
+//                   isFirstInGroup={!prev || prev.sender !== item.sender}
+//                   isLastInGroup={!next || next.sender !== item.sender}
+//                 />
+//               );
+//             }}
+//           />
 
-          {remoteUserTyping && (
-            <View style={styles.typingContainer}>
-              <Text style={styles.typingText}>
-                {currentUser === "UserA" ? "User B" : "User A"} is typing...
-              </Text>
-            </View>
-          )}
-        </View>
+//           {remoteUserTyping && (
+//             <View style={styles.typingContainer}>
+//               <Text style={styles.typingText}>
+//                 {currentUser === "UserA" ? "User B" : "User A"} is typing...
+//               </Text>
+//             </View>
+//           )}
+//         </View>
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 60}
-        >
-          <MessageInput 
-            inputText={inputText} 
-            onChangeText={handleTextChange} 
-            onSend={handleSendMessage} 
-            currentUser={currentUser} 
-          />
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </SafeAreaProvider>
-  );
-}
+//         <KeyboardAvoidingView
+//           behavior={Platform.OS === "ios" ? "padding" : "height"}
+//           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 60}
+//         >
+//           <MessageInput 
+//             inputText={inputText} 
+//             onChangeText={handleTextChange} 
+//             onSend={handleSendMessage} 
+//             currentUser={currentUser} 
+//           />
+//         </KeyboardAvoidingView>
+//       </SafeAreaView>
+//     </SafeAreaProvider>
+//   );
+// }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0e1621" },
-  centerStageContainer: { flex: 1, position: "relative", backgroundColor: "#0e1621" },
-  typingContainer: { position: "absolute", bottom: 6, left: 14 },
-  typingText: { color: "#5288c1", fontSize: 12, fontStyle: "italic" }
-});
+// const styles = StyleSheet.create({
+//   container: { flex: 1, backgroundColor: "#0e1621" },
+//   centerStageContainer: { flex: 1, position: "relative", backgroundColor: "#0e1621" },
+//   typingContainer: { position: "absolute", bottom: 6, left: 14 },
+//   typingText: { color: "#5288c1", fontSize: 12, fontStyle: "italic" }
+// });
 
 
 
@@ -408,3 +408,270 @@ const styles = StyleSheet.create({
 //     </SafeAreaProvider>
 //   );
 // }
+
+
+
+import React, { useState, useEffect, useRef } from "react";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  FlatList, 
+  KeyboardAvoidingView, 
+  Platform,
+  ImageBackground,
+  StyleSheet
+} from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { collection, addDoc, doc, setDoc, query, orderBy, onSnapshot } from "firebase/firestore";
+import { useAudioPlayer, AudioSource } from "expo-audio";
+import { db } from "./firebase";
+
+import { SplashScreen } from "./components/SplashScreen";
+import { LoginScreen } from "./components/LoginScreen";
+import { MessageBubble } from "./components/MessageBubble";
+import { styles } from "./styles/ChatScreen.styles"; 
+
+interface Message {
+  id: string;
+  text: string;
+  sender: string;
+  timestamp: number;
+  timeString: string;
+}
+
+export default function App() {
+  const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputText, setInputText] = useState<string>("");
+  const [remoteUserTyping, setRemoteUserTyping] = useState<boolean>(false);
+  
+  const flatListRef = useRef<FlatList>(null);
+  const isInitialMount = useRef<boolean>(true);
+
+  const audioSource: AudioSource = { uri: "https://assets.mixkit.co/active_storage/sfx/2357/2357-84.wav" };
+  const player = useAudioPlayer(audioSource);
+
+  useEffect(() => {
+    setIsAppLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserEmail) return;
+
+    const chatQuery = query(collection(db, "chats"), orderBy("timestamp", "asc"));
+    const unsubscribeChats = onSnapshot(chatQuery, (snapshot) => {
+      const fetched = snapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+      })) as Message[];
+
+      if (!isInitialMount.current && fetched.length > messages.length) {
+        const lastMessage = fetched[fetched.length - 1];
+        if (lastMessage && lastMessage.sender !== currentUserEmail) {
+          playIncomingPingSound();
+        }
+      }
+      
+      setMessages(fetched);
+      isInitialMount.current = false;
+    });
+
+    const unsubscribeTyping = onSnapshot(collection(db, "presence"), (snapshot) => {
+      let isOpponentTyping = false;
+      snapshot.forEach((docItem) => {
+        if (docItem.id !== currentUserEmail && docItem.data().typing === true) {
+          isOpponentTyping = true;
+        }
+      });
+      setRemoteUserTyping(isOpponentTyping);
+    });
+
+    return () => {
+      unsubscribeChats();
+      unsubscribeTyping();
+    };
+  }, [currentUserEmail, messages.length]);
+
+  const playIncomingPingSound = () => {
+    try {
+      if (player) {
+        player.seekTo(0);
+        player.play();
+      }
+    } catch (error) {
+      console.log("Audio feedback error:", error);
+    }
+  };
+
+  const handleTextChange = async (text: string) => {
+    setInputText(text);
+    if (!currentUserEmail) return;
+    try {
+      await setDoc(doc(db, "presence", currentUserEmail), { 
+        typing: text.trim().length > 0,
+        lastActive: Date.now()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Presence logging failure:", err);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || !currentUserEmail) return;
+    const textToSend = inputText.trim();
+    setInputText("");
+
+    try {
+      await setDoc(doc(db, "presence", currentUserEmail), { typing: false }, { merge: true });
+      
+      await addDoc(collection(db, "chats"), {
+        text: textToSend,
+        sender: currentUserEmail,
+        timestamp: Date.now(),
+        timeString: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    } catch (error) {
+      console.error("Firestore transmission anomaly:", error);
+    }
+  };
+
+  const handleSwitchUser = async () => {
+    if (!currentUserEmail) return;
+    await setDoc(doc(db, "presence", currentUserEmail), { typing: false }, { merge: true });
+    
+    if (currentUserEmail === "usera@devriser.com") {
+      setCurrentUserEmail("userb@devriser.com");
+    } else {
+      setCurrentUserEmail("usera@devriser.com");
+    }
+    isInitialMount.current = true;
+  };
+
+  const handleLogOut = async () => {
+    if (currentUserEmail) {
+      await setDoc(doc(db, "presence", currentUserEmail), { typing: false }, { merge: true });
+    }
+    setCurrentUserEmail(null);
+    isInitialMount.current = true;
+  };
+
+  if (isAppLoading) {
+    return <SplashScreen onFinish={() => {}} />;
+  }
+
+  if (!currentUserEmail) {
+    return <LoginScreen onMockLoginSuccess={(email) => setCurrentUserEmail(email)} />;
+  }
+
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={[styles.safe, { backgroundColor: "#ffffff" }]}>
+        
+        {/* HEADER ANCHOR CHANNELS */}
+        <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)", backgroundColor: "#ffffff" }]}>
+          <View style={styles.headerInfo}>
+            <Text style={[styles.headerName, { fontWeight: "600" }]} numberOfLines={1}>
+              {currentUserEmail.split('@')[0].toUpperCase()}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#4CAF50" }} />
+              <Text style={[styles.headerSub, { fontSize: 12, color: "#757575" }]}>Active Sync Channel</Text>
+            </View>
+          </View>
+          
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+            <TouchableOpacity 
+              style={{ backgroundColor: "rgba(36,129,204,0.08)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }} 
+              onPress={handleSwitchUser}
+            >
+              <Text style={{ color: "#2481cc", fontSize: 13, fontWeight: "600" }}>🔄 Identity Swap</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={{ backgroundColor: "rgba(255,68,68,0.06)", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20 }} 
+              onPress={handleLogOut}
+            >
+              <Text style={{ color: "#ff4444", fontSize: 13, fontWeight: "600" }}>Leave</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* MODERN KEYBOARD RIG:
+          Wrapping the workspace cleanly using cross-platform layout tokens.
+          On iOS, we use padding adjustments with a precise offset to handle safe-area spacing cleanly.
+          On Android, the operating system manages resizing internally, so we don't apply extra behavior.
+        */}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        >
+          {/* MAIN BOX CONTAINER */}
+          <View style={{ flex: 1, backgroundColor: "#f4f5f7", position: "relative" }}>
+            <ImageBackground
+              source={require("./assets/wallpaper.png")}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="repeat"
+              imageStyle={{ opacity: 0.06 }} 
+            />
+
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <MessageBubble item={item} isMe={item.sender === currentUserEmail} />
+              )}
+            />
+
+            {remoteUserTyping && (
+              <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
+                <Text style={{ fontSize: 12, color: "#2481cc", fontWeight: "500", fontStyle: "italic" }}>
+                  💬 Opponent node is typing...
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* DYNAMIC ATTACHED FOOTER INPUT BAR */}
+          <View style={{ borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)", backgroundColor: "#ffffff", paddingHorizontal: 12, paddingVertical: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f0f2f5", borderRadius: 24, paddingHorizontal: 14, minHeight: 44 }}>
+              <TextInput
+                style={{ flex: 1, fontSize: 15, color: "#2c3e50", paddingVertical: 8, marginRight: 10 }}
+                value={inputText}
+                onChangeText={handleTextChange}
+                placeholder="Type your secure message..."
+                placeholderTextColor="#95a5a6"
+                multiline
+              />
+              <TouchableOpacity 
+                style={{ 
+                  backgroundColor: inputText.trim().length > 0 ? "#2481cc" : "transparent", 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: 16, 
+                  justifyContent: "center", 
+                  alignItems: "center" 
+                }} 
+                onPress={handleSendMessage}
+              >
+                <Text style={{ color: inputText.trim().length > 0 ? "#ffffff" : "#2481cc", fontWeight: "700", fontSize: 14 }}>
+                  ➔
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
