@@ -18,12 +18,32 @@ A real-time chat application built with **Expo SDK 54** and **Firebase Firestore
 ## Features
 
 - **Real-time messaging** — Messages sync instantly via Firestore `onSnapshot` listeners
-- **Dual-user identity swap** — Toggle between `usera@devriser.com` and `userb@devriser.com` to simulate both sides of a conversation
-- **Live typing indicator** — Debounced presence tracking via a `presence` Firestore collection; only writes to the database on start-typing and stop-typing transitions (not on every keystroke)
-- **Incoming message audio** — Plays a ping sound when a message arrives from the other user
-- **Offline persistence** — Firestore `persistentLocalCache` with multi-tab support for offline access
-- **Cross-platform keyboard avoidance** — `KeyboardAvoidingView` configured for both iOS and Android
-- **Dark-themed chat UI** — Clean style tokens via `constants/Colors.ts` with wallpaper overlay
+- **Dual-user identity swap** — Easily toggle between two pre-configured accounts to test messaging, presence, and sound feedback from both viewpoints.
+- **Live typing indicator** — Debounced presence tracking via a `presence` Firestore collection; only writes to the database on start-typing and stop-typing transitions (not on every keystroke).
+- **Active heartbeat online status** — Updates your status in Firestore immediately upon logging in and maintains an active heartbeat every 15s. Instantly sets your status to offline when switching users or signing out.
+- **Incoming message audio** — Plays a ping sound when a message arrives from the other user.
+- **Offline persistence** — Firestore `persistentLocalCache` with offline access.
+- **Cross-platform keyboard avoidance** — `KeyboardAvoidingView` configured for both iOS and Android.
+- **Dark-themed chat UI** — Clean style tokens via `constants/Colors.ts` with wallpaper overlay and a detailed header showing the peer's presence state.
+
+---
+
+## User Identity Switching
+
+The app features a built-in user identity switcher that makes simulating a two-way conversation seamless, even when testing on a single device.
+
+### Supported Test Accounts
+The identity switching is configured in the code for these two accounts (which must be created in your Firebase Console):
+- `test@devriser.com`
+- `userb@devriser.com`
+
+### How the Swapping Flow Works:
+1. When you click the **🔄 Switch** button in the chat header, the application:
+   - Gracefully clears your active typing states.
+   - Cleans up your online status in the database (sets `lastActive` to `0` and `typing` to `false` in the `presence` collection).
+   - Terminates your active session via Firebase Auth (`signOut`).
+2. The app redirects you to the Login Screen with the **alternate user's email address pre-filled** in the input field.
+3. Simply enter the password for the alternate user to instantly log in and respond to the messages from the other side of the chat.
 
 ---
 
@@ -50,8 +70,10 @@ This project uses Firebase Firestore for real-time data sync and Firebase Auth f
 1. In the Firebase Console, go to **Authentication** → **Sign-in method**
 2. Enable **Email/Password** sign-in
 3. (Optional but recommended) Add two test users:
-   - `usera@devriser.com`
+   - `test@devriser.com`
    - `userb@devriser.com`
+   
+   The password for both test accounts can be anything you choose during creation.
 
 ### 4. Create Required Firestore Collections
 
@@ -67,6 +89,33 @@ The app expects these collections:
 | `timestamp` | Ascending |
 
 You may be prompted to create this index automatically the first time the app runs and queries the collection.
+
+---
+
+## Firestore Security Rules
+
+The project includes a `firestore.rules` file with pre-configured security rules for production:
+
+```javascript
+// General rules:
+// - /chats:  Any authenticated user can read all messages. Users can only create messages
+//            with their own email as sender. No updates or deletes (immutable message log).
+// - /presence: Users can only write to their own presence document (keyed by email).
+//             Any authenticated user can read all presence docs.
+```
+
+### Deploy Rules
+
+Run the Firebase CLI to deploy the security rules:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init firestore   # Select your Firebase project
+firebase deploy --only firestore:rules
+```
+
+Alternatively, copy the rules from `firestore.rules` into the Firebase Console under **Firestore Database → Rules** and publish them manually.
 
 ---
 
@@ -126,7 +175,7 @@ Scan the QR code with **Expo Go** (Android/iOS), or press:
 | `npx expo start`     | Start dev server               |
 | `npx expo start --android` | Start and launch on Android |
 | `npx expo start --ios`     | Start and launch on iOS    |
-| `npx tsc --noEmit`   | Run TypeScript type checking   |
+| `npm run typecheck`   | Run TypeScript type checking   |
 
 ---
 
@@ -134,41 +183,39 @@ Scan the QR code with **Expo Go** (Android/iOS), or press:
 
 ```
 rn-chat-v54/
-├── App.tsx                    # Main application entry point
-├── app/                       # Expo Router pages (file-based routing)
-│   ├── (auth)/                # Auth-related routes
-│   ├── (tabs)/                # Tab navigation routes
-│   ├── chat/[id].tsx          # Individual chat screen
-│   └── _layout.tsx            # Root layout
+├── App.tsx                    # Main application entry point & screens
+├── index.js                   # App registration entry point
 ├── components/
-│   ├── ChatHeader.tsx          # Chat header with user avatar & status
-│   ├── LoginScreen.tsx         # Mock login / identity picker
-│   ├── MessageBubble.tsx       # Chat bubble component
-│   ├── MessageInput.tsx        # Text input & send button
-│   └── SplashScreen.tsx        # Splash/loading screen
+│   ├── LoginScreen.tsx         # Secure email/password login UI
+│   ├── MessageBubble.tsx       # Message balloon component with status ticks
+│   └── SplashScreen.tsx        # App loading splash screen
 ├── constants/
-│   └── Colors.ts               # Design token color palette
+│   └── Colors.ts               # Palette and styling color design tokens
 ├── styles/
-│   ├── Bubble.styles.ts        # Message bubble styles
-│   ├── ChatScreen.styles.ts    # Main chat screen styles
-│   └── ...                     # Other component styles
-├── types/
-│   └── index.ts                # TypeScript interfaces (User, Message, etc.)
-├── firebase.ts                 # Firebase initialization & config
+│   ├── AuthScreen.styles.ts    # Stylesheet for login form
+│   ├── Bubble.styles.ts        # Stylesheet for chat bubbles
+│   └── ChatScreen.styles.ts    # Stylesheet for main chat window
+├── firebase.ts                 # Firebase App init & Auth/Firestore setup
+├── firestore.rules             # Firestore security rules
+├── metro.config.js             # Metro bundler config (Firebase CJS support)
+├── eas.json                    # EAS Build configuration
+├── tsconfig.json               # TypeScript configuration
 ├── app.json                    # Expo configuration
-└── package.json                # Dependencies & scripts
+├── .env.example                # Environment variable template
+├── .gitignore                  # Git ignore rules
+└── package.json                # Dependencies, entry script definition
 ```
 
 ---
 
 ## How to Use
 
-1. **Launch the app** — You'll see a login screen with mock login buttons
-2. **Enter as one user** — Tap "Enter as usera@devriser.com"
-3. **Send messages** — Type in the input bar and tap the send arrow
-4. **Swap identity** — Tap **🔄 Identity Swap** in the header to switch to `userb@devriser.com`
-5. **See typing indicators** — When one user types, the other sees "Opponent node is typing..."
-6. **Hear audio feedback** — An incoming ping plays when a message arrives from the other user
+1. **Launch the app** — You will see the Login Screen. It defaults to the `test@devriser.com` email field.
+2. **Enter as one user** — Type the password for `test@devriser.com` (or create a new account via the signup flow) and click Sign In.
+3. **Send messages** — Type in the input bar and tap the send arrow.
+4. **Swap identity** — Tap **🔄 Switch** in the header to log out and pre-fill the form with `userb@devriser.com` to swap identities.
+5. **See typing indicators** — When typing on one device, the other device displays `💬 Someone is typing...` above the input bar.
+6. **Hear audio feedback** — An incoming ping plays when a message arrives from the peer.
 
 ---
 
@@ -198,21 +245,63 @@ rn-chat-v54/
 
 To generate a standalone APK using Expo Application Services (EAS):
 
-```bash
-# Install EAS CLI if you haven't
-npm install -g eas-cli
+1. **Install EAS CLI:**
+   ```bash
+   npm install -g eas-cli
+   ```
+2. **Login to Expo Account:**
+   ```bash
+   eas login
+   ```
+3. **Initialize EAS Project:**
+   ```bash
+   eas project:init
+   ```
+4. **Configure Build Settings:**
+   Create an `eas.json` file in the root with the following:
+   ```json
+   {
+     "cli": {
+       "version": ">= 10.0.0"
+     },
+     "build": {
+       "development": {
+         "developmentClient": true,
+         "distribution": "internal"
+       },
+       "preview": {
+         "distribution": "internal",
+         "android": {
+           "buildType": "apk"
+         }
+       },
+       "production": {}
+     },
+     "submit": {
+       "production": {}
+     }
+   }
+   ```
+5. **Build the APK:**
+   ```bash
+   eas build -p android --profile preview
+   ```
+   Once finished, EAS will provide a direct download link to the compiled `.apk` file. Download and place the file in the repository or add it to the release section.
 
-# Log in to your Expo account
-eas login
+---
+## Live APK download link:
+`https://expo.dev/accounts/iftykhar101/projects/devriser-chat-app/builds/b34454bb-e1fc-4e0c-ab44-7ce340dbf17a`
 
-# Build a preview APK
-eas build -p android --profile preview
-```
+---
 
-> You'll need an **Expo account** and an **EAS Build profile** configured in `eas.json`. See the [EAS Build docs](https://docs.expo.dev/build/introduction/) for setup details.
+## 📽️ Video Demonstration
+As part of the submission requirements:
+
+Video Link:
+`https://drive.google.com/file/d/1ZSlzfpLJC0zTTvFwzCpYyzqRH4m8EUXj/view?usp=sharing`
+
 
 ---
 
 ## License
-
 Private — for assessment purposes.

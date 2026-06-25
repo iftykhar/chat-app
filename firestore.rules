@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Firestore Security Rules for DevRiser Chat
+// These rules assume Authentication (Email/Password) is enabled in Firebase Console.
+//
+// Collections:
+//   /chats/{docId}    — Messages sent between users
+//   /presence/{email} — Typing indicators & online status per user
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================
+    // CHATS COLLECTION
+    // =====================
+    // Any authenticated user can read all messages (public chat room model).
+    // Users can only create messages with their own email as the sender field.
+    // No updates or deletes allowed (immutable message log).
+    match /chats/{messageId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.auth.token.email != null
+                    && request.resource.data.sender == request.auth.token.email
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.timestamp is number;
+      allow update, delete: if false;
+    }
+
+    // =====================
+    // PRESENCE COLLECTION
+    // =====================
+    // Users can only write to their own presence document (keyed by email).
+    // Any authenticated user can read all presence docs (to see who's typing/online).
+    match /presence/{email} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.email == email
+                   && request.resource.data.typing is bool;
+      allow create: if request.auth != null
+                    && request.auth.token.email == email;
+      allow delete: if false;
+    }
+
+    // =====================
+    // DENY ALL OTHER PATHS
+    // =====================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
