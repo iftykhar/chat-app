@@ -18,13 +18,32 @@ A real-time chat application built with **Expo SDK 54** and **Firebase Firestore
 ## Features
 
 - **Real-time messaging** — Messages sync instantly via Firestore `onSnapshot` listeners
-- **Dual-user identity swap** — Toggle between `test@devriser.com` and `userb@devriser.com` to simulate both sides of a conversation
-- **Live typing indicator** — Debounced presence tracking via a `presence` Firestore collection; only writes to the database on start-typing and stop-typing transitions (not on every keystroke)
+- **Dual-user identity swap** — Easily toggle between two pre-configured accounts to test messaging, presence, and sound feedback from both viewpoints.
+- **Live typing indicator** — Debounced presence tracking via a `presence` Firestore collection; only writes to the database on start-typing and stop-typing transitions (not on every keystroke).
 - **Active heartbeat online status** — Updates your status in Firestore immediately upon logging in and maintains an active heartbeat every 15s. Instantly sets your status to offline when switching users or signing out.
-- **Incoming message audio** — Plays a ping sound when a message arrives from the other user
-- **Offline persistence** — Firestore `persistentLocalCache` with multi-tab support for offline access
-- **Cross-platform keyboard avoidance** — `KeyboardAvoidingView` configured for both iOS and Android
+- **Incoming message audio** — Plays a ping sound when a message arrives from the other user.
+- **Offline persistence** — Firestore `persistentLocalCache` with offline access.
+- **Cross-platform keyboard avoidance** — `KeyboardAvoidingView` configured for both iOS and Android.
 - **Dark-themed chat UI** — Clean style tokens via `constants/Colors.ts` with wallpaper overlay and a detailed header showing the peer's presence state.
+
+---
+
+## User Identity Switching
+
+The app features a built-in user identity switcher that makes simulating a two-way conversation seamless, even when testing on a single device.
+
+### Supported Test Accounts
+The identity switching is configured in the code for these two accounts (which must be created in your Firebase Console):
+- `test@devriser.com`
+- `userb@devriser.com`
+
+### How the Swapping Flow Works:
+1. When you click the **🔄 Switch** button in the chat header, the application:
+   - Gracefully clears your active typing states.
+   - Cleans up your online status in the database (sets `lastActive` to `0` and `typing` to `false` in the `presence` collection).
+   - Terminates your active session via Firebase Auth (`signOut`).
+2. The app redirects you to the Login Screen with the **alternate user's email address pre-filled** in the input field.
+3. Simply enter the password for the alternate user to instantly log in and respond to the messages from the other side of the chat.
 
 ---
 
@@ -51,8 +70,9 @@ This project uses Firebase Firestore for real-time data sync and Firebase Auth f
 1. In the Firebase Console, go to **Authentication** → **Sign-in method**
 2. Enable **Email/Password** sign-in
 3. (Optional but recommended) Add two test users:
-   - `test@devriser.com`
-   - `userb@devriser.com`
+   - `test1@devriser.com`
+   - `user@devriser.com`
+   - `123456`
 
 ### 4. Create Required Firestore Collections
 
@@ -136,7 +156,6 @@ Scan the QR code with **Expo Go** (Android/iOS), or press:
 ```
 rn-chat-v54/
 ├── App.tsx                    # Main application entry point & screens
-├── app/                       # [Boilerplate/Unused] Expo Router templates
 ├── components/
 │   ├── LoginScreen.tsx         # Secure email/password login UI
 │   ├── MessageBubble.tsx       # Message balloon component with status ticks
