@@ -199,23 +199,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ initialEmail }) => {
                 </TouchableOpacity>
               </View>
 
-              {/* Forgot Password link — only shown in sign-in mode */}
-              {!isSignUp && (
-                <TouchableOpacity
-                  onPress={openPasswordReset}
-                  style={{ alignSelf: "flex-end", marginTop: 4 }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "500",
-                      color: Colors.primary,
-                    }}
-                  >
-                    Forgot Password?
-                  </Text>
-                </TouchableOpacity>
-              )}
+              
             </View>
 
             <View style={styles.btnWrapper}>

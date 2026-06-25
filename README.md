@@ -70,9 +70,10 @@ This project uses Firebase Firestore for real-time data sync and Firebase Auth f
 1. In the Firebase Console, go to **Authentication** → **Sign-in method**
 2. Enable **Email/Password** sign-in
 3. (Optional but recommended) Add two test users:
-   - `test1@devriser.com`
-   - `user@devriser.com`
-   - `123456`
+   - `test@devriser.com`
+   - `userb@devriser.com`
+   
+   The password for both test accounts can be anything you choose during creation.
 
 ### 4. Create Required Firestore Collections
 
@@ -88,6 +89,33 @@ The app expects these collections:
 | `timestamp` | Ascending |
 
 You may be prompted to create this index automatically the first time the app runs and queries the collection.
+
+---
+
+## Firestore Security Rules
+
+The project includes a `firestore.rules` file with pre-configured security rules for production:
+
+```javascript
+// General rules:
+// - /chats:  Any authenticated user can read all messages. Users can only create messages
+//            with their own email as sender. No updates or deletes (immutable message log).
+// - /presence: Users can only write to their own presence document (keyed by email).
+//             Any authenticated user can read all presence docs.
+```
+
+### Deploy Rules
+
+Run the Firebase CLI to deploy the security rules:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init firestore   # Select your Firebase project
+firebase deploy --only firestore:rules
+```
+
+Alternatively, copy the rules from `firestore.rules` into the Firebase Console under **Firestore Database → Rules** and publish them manually.
 
 ---
 
@@ -147,7 +175,7 @@ Scan the QR code with **Expo Go** (Android/iOS), or press:
 | `npx expo start`     | Start dev server               |
 | `npx expo start --android` | Start and launch on Android |
 | `npx expo start --ios`     | Start and launch on iOS    |
-| `npx tsc --noEmit`   | Run TypeScript type checking   |
+| `npm run typecheck`   | Run TypeScript type checking   |
 
 ---
 
@@ -156,21 +184,25 @@ Scan the QR code with **Expo Go** (Android/iOS), or press:
 ```
 rn-chat-v54/
 ├── App.tsx                    # Main application entry point & screens
+├── index.js                   # App registration entry point
 ├── components/
 │   ├── LoginScreen.tsx         # Secure email/password login UI
 │   ├── MessageBubble.tsx       # Message balloon component with status ticks
-│   ├── SplashScreen.tsx        # App loading splash screen
-│   ├── ChatHeader.tsx          # Original header template
-│   └── MessageInput.tsx        # Input bar template
+│   └── SplashScreen.tsx        # App loading splash screen
 ├── constants/
 │   └── Colors.ts               # Palette and styling color design tokens
 ├── styles/
 │   ├── AuthScreen.styles.ts    # Stylesheet for login form
 │   ├── Bubble.styles.ts        # Stylesheet for chat bubbles
-│   ├── ChatScreen.styles.ts    # Stylesheet for main chat window
-│   └── ...                     # Layout stylesheets
+│   └── ChatScreen.styles.ts    # Stylesheet for main chat window
 ├── firebase.ts                 # Firebase App init & Auth/Firestore setup
+├── firestore.rules             # Firestore security rules
+├── metro.config.js             # Metro bundler config (Firebase CJS support)
+├── eas.json                    # EAS Build configuration
+├── tsconfig.json               # TypeScript configuration
 ├── app.json                    # Expo configuration
+├── .env.example                # Environment variable template
+├── .gitignore                  # Git ignore rules
 └── package.json                # Dependencies, entry script definition
 ```
 
@@ -257,16 +289,17 @@ To generate a standalone APK using Expo Application Services (EAS):
    Once finished, EAS will provide a direct download link to the compiled `.apk` file. Download and place the file in the repository or add it to the release section.
 
 ---
+## Live APK download link:
+`https://expo.dev/accounts/iftykhar101/projects/devriser-chat-app/builds/b34454bb-e1fc-4e0c-ab44-7ce340dbf17a`
+
+---
 
 ## 📽️ Video Demonstration
 As part of the submission requirements:
-1. Run two instances (e.g. Android Emulator and Web or Dual Emulators) side-by-side.
-2. Record a brief video (`.mp4` or `.gif`) demonstrating:
-   * Switching/Logging in as both users
-   * Real-time message exchange
-   * Typing indicators
-   * Live Online/Offline status switching
-3. Save the recording to the repository (e.g., inside an `/assets/` or `/demo/` directory) and link it in the submission.
+
+Video Link:
+`https://drive.google.com/file/d/1ZSlzfpLJC0zTTvFwzCpYyzqRH4m8EUXj/view?usp=sharing`
+
 
 ---
 

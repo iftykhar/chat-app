@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ActivityIndicator, Animated, Platform } from "react-native";
+import { StyleSheet, View, Text, ActivityIndicator, Animated, Platform, Image } from "react-native";
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -39,9 +39,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoText}>➔</Text>
-        </View>
+        <Image
+          source={require("../assets/icon.png")}
+          style={styles.logoImage}
+        />
         <Text style={styles.brandTitle}>DevRiser Studio</Text>
         <Text style={styles.brandSubtitle}>Secure Messaging Protocol</Text>
         
@@ -74,6 +75,12 @@ const styles = StyleSheet.create({
     alignItems: "center", 
     marginBottom: 16, 
     elevation: 6 
+  },
+  logoImage: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 20, 
+    marginBottom: 16,
   },
   logoText: { 
     color: "#fff", 
