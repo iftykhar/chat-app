@@ -210,12 +210,11 @@ rn-chat-v54/
 
 ## How to Use
 
-1. **Launch the app** — You will see the Login Screen. It defaults to the `test@devriser.com` email field.
-2. **Enter as one user** — Type the password for `test@devriser.com` (or create a new account via the signup flow) and click Sign In.
+1. **Launch the app** — You will see the Login Screen. It defaults to  email field.
+2. **Enter as one user** — Type the password  (or create a new account via the signup flow) and click Sign In.
 3. **Send messages** — Type in the input bar and tap the send arrow.
 4. **Swap identity** — Tap **🔄 Switch** in the header to log out and pre-fill the form with `userb@devriser.com` to swap identities.
 5. **See typing indicators** — When typing on one device, the other device displays `💬 Someone is typing...` above the input bar.
-6. **Hear audio feedback** — An incoming ping plays when a message arrives from the peer.
 
 ---
 
