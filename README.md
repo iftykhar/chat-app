@@ -290,7 +290,9 @@ To generate a standalone APK using Expo Application Services (EAS):
 
 ---
 ## Live APK download link:
-`https://expo.dev/accounts/iftykhar101/projects/devriser-chat-app/builds/b34454bb-e1fc-4e0c-ab44-7ce340dbf17a`
+```bash
+https://expo.dev/accounts/iftykhar101/projects/devriser-chat-app/builds/b34454bb-e1fc-4e0c-ab44-7ce340dbf17a
+```
 
 ---
 
@@ -298,10 +300,6 @@ To generate a standalone APK using Expo Application Services (EAS):
 As part of the submission requirements:
 
 Video Link:
-`https://drive.google.com/file/d/1ZSlzfpLJC0zTTvFwzCpYyzqRH4m8EUXj/view?usp=sharing`
-
-
----
-
-## License
-Private — for assessment purposes.
+```bash
+https://drive.google.com/file/d/1ZSlzfpLJC0zTTvFwzCpYyzqRH4m8EUXj/view?usp=sharing`
+```
