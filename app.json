@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "rn-chat-v54",
-    "slug": "rn-chat-v54",
+    "name": "devriser-chat-app",
+    "slug": "devriser-chat-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,13 +20,24 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.iftykhar101.devriserchatapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-audio"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d15b9eb5-73e1-4af0-8a45-bb23d40f57f2"
+      }
+    },
+    "owner": "iftykhar101"
   }
 }
