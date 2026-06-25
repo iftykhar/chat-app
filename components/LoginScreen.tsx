@@ -199,7 +199,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ initialEmail }) => {
                 </TouchableOpacity>
               </View>
 
-              
+             
             </View>
 
             <View style={styles.btnWrapper}>
